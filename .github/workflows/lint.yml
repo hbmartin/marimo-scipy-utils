@@ -18,5 +18,5 @@ jobs:
         allow-prereleases: true
     - run: pip install -r requirements.txt
     - run: ruff check marimo_scipy_utils
-    - run: ty check marimo_scipy_utils
+    - run: echo "$pythonLocation"; ty check marimo_scipy_utils --python "$pythonLocation"
     - run: black --check marimo_scipy_utils
