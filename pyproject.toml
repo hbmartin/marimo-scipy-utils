@@ -1,6 +1,6 @@
 [project]
 name = "marimo-scipy-utils"
-version = "0.1.0"
+version = "0.1.1"
 description = "A collection of utilities to make it easier to interact with scipy in a marimo notebook, e.g. manipulate distributions, visualize data, etc."
 readme = "README.md"
 license = "Apache-2.0"
@@ -22,7 +22,6 @@ keywords = [
     "visualization",
     "data analysis",
     "data visualization",
-    "data analysis",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -63,3 +62,7 @@ line-ending = "auto"
 
 [tool.setuptools]
 packages = ["marimo_scipy_utils"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+marimo_scipy_utils = ["py.typed"]
