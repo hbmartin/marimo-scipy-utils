@@ -1,14 +1,14 @@
 [project]
 name = "marimo-scipy-utils"
-version = "0.1.1"
+version = "0.1.2"
 description = "A collection of utilities to make it easier to interact with scipy in a marimo notebook, e.g. manipulate distributions, visualize data, etc."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
-    "marimo>=0.14.11",
-    "matplotlib>=3.10.3",
-    "scipy>=1.16.0",
+    "marimo",
+    "matplotlib>=3.8.4",
+    "scipy>=1.14.1",
 ]
 authors = [
     { name = "Harold Martin", email = "Harold.Martin@gmail.com" },
