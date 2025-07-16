@@ -23,7 +23,8 @@ class ParameterBoundError(ParameterValidationError):
         allowed_value: float,
         bound_type: str,
     ):
-        message = f"{parameter_name}: given {bound_type} bound {given_value} is {'less than' if bound_type == 'lower' else 'greater than'} allowed: {allowed_value}"
+        lt_gt = "less than" if bound_type == "lower" else "greater than"
+        message = f"{parameter_name}: given {bound_type} bound {given_value} is {lt_gt} allowed: {allowed_value}"
         super().__init__(message)
 
 

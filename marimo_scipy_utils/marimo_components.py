@@ -1,3 +1,16 @@
+"""Utility functions for creating interactive marimo UI with scipy distributions.
+
+This module provides functions for creating and configuring interactive UI elements
+in marimo notebooks, with a focus on parameter input and visualization using scipy
+probability distributions.
+
+The module includes utilities for:
+- Creating interactive sliders with distribution plots
+- Generating and validating parameter ranges for distributions
+- Formatting numbers with k/M suffixes for thousands/millions
+- Creating dictionaries of parameter sliders
+"""
+
 from collections.abc import Callable
 
 import marimo as mo

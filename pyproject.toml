@@ -24,18 +24,18 @@ keywords = [
     "data visualization",
     "data analysis",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.13",
+]
 
 [dependency-groups]
 dev = [
     "black>=25.1.0",
     "ruff>=0.12.3",
     "ty>=0.0.1a14",
-]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: End Users/Desktop",
-    "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3.13",
 ]
 
 [tool.ruff]
@@ -49,6 +49,10 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["ALL"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"marimo_scipy_utils/exceptions.py" = ["ANN204", "D100","D107", "E501"]
 
 [tool.ruff.format]
 # Same as Black.
