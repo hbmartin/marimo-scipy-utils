@@ -9,6 +9,8 @@ Utility functions for creating interactive marimo components with scipy distribu
 
 This package provides functions for creating and configuring interactive UI elements in marimo notebooks, with a focus on parameter input and visualization using scipy probability distributions.
 
+<img src="media/demo.png" />
+
 ## Installation
 
 ```bash
@@ -16,6 +18,8 @@ uv add marimo-scipy-utils
 ```
 
 ## Functions
+
+[See example notebook here](https://github.com/hbmartin/ai-roi-mcm-npv-marimo/blob/main/ai_roi_mcm_npv.py)
 
 ### `abbrev_format(x: float, pos: int | None) -> str`
 
