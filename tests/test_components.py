@@ -7,6 +7,7 @@ import scipy.stats
 from marimo_scipy_utils import (
     DistributionConfigurationError,
     InputVar,
+    MissingParameterError,
     UnknownDistributionError,
     display_sliders,
     params_sliders,
@@ -30,6 +31,11 @@ def test_params_sliders_configuration():
     # defaults: step 0.1, value at the midpoint
     assert sliders["std"].step == 0.1
     assert sliders["std"].value == 5
+
+
+def test_params_sliders_missing_bound_raises():
+    with pytest.raises(MissingParameterError):
+        params_sliders({"mean": {"lower": 0}})
 
 
 def test_resolve_distribution():

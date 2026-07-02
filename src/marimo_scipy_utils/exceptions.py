@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+
+
 class ParameterValidationError(Exception):
     """Base class for parameter validation errors."""
 
@@ -5,7 +8,7 @@ class ParameterValidationError(Exception):
 class MissingParameterError(ParameterValidationError):
     """Raised when a required parameter is missing."""
 
-    def __init__(self, parameter_name: str, ranges: dict | None = None):
+    def __init__(self, parameter_name: str, ranges: Mapping | None = None):
         if ranges:
             message = f"Missing required parameter: {parameter_name}, must set any `None`s in {ranges}"
         else:

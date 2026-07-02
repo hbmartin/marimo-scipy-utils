@@ -16,7 +16,7 @@ import copy
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import marimo as mo
 import matplotlib.pyplot as plt
@@ -130,14 +130,14 @@ class InputVar:
         """Whether this variable is a constant rather than a distribution."""
         return self.dist is None
 
-    def frozen(self) -> object:
+    def frozen(self) -> Any:  # noqa: ANN401
         """Return the frozen scipy distribution for the current slider values.
 
         Raises:
             DistributionConfigurationError: If this variable is a constant.
 
         """
-        if self.dist is None:
+        if self.dist is None or not isinstance(self.params, mo.ui.dictionary):
             raise DistributionConfigurationError
         return self.dist(**{k: v.value for k, v in self.params.items()})
 
@@ -224,40 +224,34 @@ def generate_ranges(
     defaults = copy.deepcopy(_distributions[distribution])
 
     for p_name, ranges in defaults.items():
+        allowed_lower = ranges.get("lower")
+        allowed_upper = ranges.get("upper")
         if p_name not in ranged_distkwargs:
-            if ranges["lower"] is None or ranges["upper"] is None:
+            if allowed_lower is None or allowed_upper is None:
                 raise MissingParameterError(p_name, ranges)
             continue
 
         given = ranged_distkwargs[p_name]
+        given_lower = given.get("lower")
+        given_upper = given.get("upper")
 
-        if "lower" not in given and ranges["lower"] is None:
+        if given_lower is None and allowed_lower is None:
             raise MissingParameterError(p_name)
         if (
-            "lower" in given
-            and ranges["lower"] is not None
-            and given["lower"] < ranges["lower"]
+            given_lower is not None
+            and allowed_lower is not None
+            and given_lower < allowed_lower
         ):
-            raise ParameterBoundError(
-                p_name,
-                given["lower"],
-                ranges["lower"],
-                "lower",
-            )
+            raise ParameterBoundError(p_name, given_lower, allowed_lower, "lower")
 
-        if "upper" not in given and ranges["upper"] is None:
+        if given_upper is None and allowed_upper is None:
             raise MissingParameterError(p_name)
         if (
-            "upper" in given
-            and ranges["upper"] is not None
-            and given["upper"] > ranges["upper"]
+            given_upper is not None
+            and allowed_upper is not None
+            and given_upper > allowed_upper
         ):
-            raise ParameterBoundError(
-                p_name,
-                given["upper"],
-                ranges["upper"],
-                "upper",
-            )
+            raise ParameterBoundError(p_name, given_upper, allowed_upper, "upper")
 
     return _deep_merge(defaults, ranged_distkwargs)
 
@@ -280,6 +274,10 @@ def params_sliders(
         mo.ui.dictionary: A dictionary of marimo slider UI elements, one per parameter.
             Each slider will be configured according to the parameter's range spec.
 
+    Raises:
+        MissingParameterError: If a parameter's range spec lacks a concrete
+            lower or upper bound.
+
     Example:
         >>> ranges = {
         ...     "mean": {"lower": 0, "upper": 100, "step": 1, "value": 50},
@@ -288,17 +286,19 @@ def params_sliders(
         >>> sliders = params_sliders(ranges)
 
     """
-    return mo.ui.dictionary(
-        {
-            p_name: mo.ui.slider(
-                start=ranges["lower"],
-                stop=ranges["upper"],
-                step=ranges.get("step", _DEFAULT_STEP),
-                value=ranges.get("value", (ranges["lower"] + ranges["upper"]) / 2),
-            )
-            for p_name, ranges in ranged_distkwargs.items()
-        },
-    )
+    sliders: dict[str, Any] = {}
+    for p_name, ranges in ranged_distkwargs.items():
+        lower = ranges.get("lower")
+        upper = ranges.get("upper")
+        if lower is None or upper is None:
+            raise MissingParameterError(p_name, ranges)
+        sliders[p_name] = mo.ui.slider(
+            start=lower,
+            stop=upper,
+            step=ranges.get("step", _DEFAULT_STEP),
+            value=ranges.get("value", (lower + upper) / 2),
+        )
+    return mo.ui.dictionary(sliders)
 
 
 _thousand = 1e3
