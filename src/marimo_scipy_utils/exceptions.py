@@ -33,5 +33,16 @@ class DistributionConfigurationError(ParameterValidationError):
 
     def __init__(self):
         super().__init__(
-            "dist is required for multiple sliders, use _CONST for constants",
+            "dist is required when passing a dictionary of parameter sliders; only a single slider (a constant) may omit it",
         )
+
+
+class UnknownDistributionError(ParameterValidationError):
+    """Raised when a distribution name cannot be resolved."""
+
+    def __init__(self, distribution: str, supported: list[str] | None = None):
+        if supported:
+            message = f"Unknown distribution: {distribution!r}, supported distributions are: {supported}"
+        else:
+            message = f"Unknown distribution: {distribution!r}, expected the name of a scipy.stats distribution"
+        super().__init__(message)

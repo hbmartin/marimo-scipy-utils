@@ -1,7 +1,6 @@
 [![PyPI](https://img.shields.io/pypi/v/marimo-scipy-utils.svg)](https://pypi.org/project/marimo-scipy-utils/)
-[![Lint and Typecheck](https://github.com/hbmartin/marimo-scipy-utils/actions/workflows/lint.yml/badge.svg)](https://github.com/hbmartin/marimo-scipy-utils/actions/workflows/lint.yml)
+[![Lint, Typecheck, and Test](https://github.com/hbmartin/marimo-scipy-utils/actions/workflows/lint.yml/badge.svg)](https://github.com/hbmartin/marimo-scipy-utils/actions/workflows/lint.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Code style: black](https://img.shields.io/badge/🐧️-black-000000.svg)](https://github.com/psf/black)
 
 # Marimo SciPy Utils
 
@@ -17,97 +16,112 @@ This package provides functions for creating and configuring interactive UI elem
 uv add marimo-scipy-utils
 ```
 
-## Functions
+Requires Python 3.12+.
 
-[See example notebook here](https://github.com/hbmartin/ai-roi-mcm-npv-marimo/blob/main/ai_roi_mcm_npv.py)
+## Quickstart
 
-### `abbrev_format(x: float, pos: int | None) -> str`
-
-Format numbers with k/M suffixes for thousands/millions.
-
-**Parameters:**
-- `x`: The number to format
-- `pos`: The tick position (unused but required by matplotlib formatter interface)
-
-**Returns:**
-- `str`: The formatted number string with k/M suffix if applicable
-
-**Example:**
 ```python
-abbrev_format(1500, None)  # Returns "2k"
-abbrev_format(2500000, None)  # Returns "3M"
-abbrev_format(42.7, None)  # Returns "42.7"
+import marimo as mo
+import numpy as np
+from marimo_scipy_utils import (
+    display_sliders,
+    generate_ranges,
+    params_sliders,
+    sample_invars,
+)
+
+invars = {}
+
+# A distribution input: validated ranges -> sliders -> display with live plot
+sliders = params_sliders(
+    generate_ranges(
+        "norm",
+        {
+            "loc": {"lower": 0, "upper": 100},
+            "scale": {"upper": 20},
+        },
+    )
+)
+display_sliders("Growth rate", sliders, invars, dist="norm")
+
+# A constant input: a single slider
+display_sliders("Discount rate", mo.ui.slider(start=0.0, stop=0.2, step=0.01, value=0.08), invars)
+
+# Monte Carlo: sample every configured input variable
+samples = sample_invars(invars, 10_000, rng=np.random.default_rng(0))
 ```
 
-### `display_sliders(name: str, sliders: mo.ui.dictionary | mo.ui.slider, invars: dict[str, dict], dist: str | Callable | None = None, descriptions: dict = {}) -> mo.Html`
+See the runnable notebook in [`examples/monte_carlo_demo.py`](examples/monte_carlo_demo.py) (`uvx marimo edit examples/monte_carlo_demo.py`), or a larger real-world example in [this NPV model notebook](https://github.com/hbmartin/ai-roi-mcm-npv-marimo/blob/main/ai_roi_mcm_npv.py).
 
-Display parameter sliders with optional distribution plot.
+## API
 
-**Parameters:**
-- `name`: Name of the parameter group to display
-- `sliders`: Either a single slider or dictionary of sliders for distribution params
-- `invars`: Dictionary to store input variable configurations
-- `dist`: Distribution to use (string name or callable), required for multi-sliders
-- `descriptions`: Optional dict mapping parameter names to descriptions
+### `display_sliders(name, sliders, invars, dist=None, descriptions=None, *, figsize=(2, 2), color="C0", tail=0.0005) -> mo.Html`
 
-**Returns:**
-- Marimo component displaying the sliders and optional distribution plot
+Display parameter sliders with an optional distribution plot.
 
-For a single slider, displays it as a constant parameter. For multiple sliders, displays them with a plot of the resulting distribution. Distribution must be specified for multiple sliders, either as a string name matching a scipy distribution or as a callable distribution object.
+- A single `mo.ui.slider` is displayed as a constant parameter.
+- A `mo.ui.dictionary` of sliders is displayed alongside a live plot of the resulting distribution; `dist` is required and can be the name of any `scipy.stats` distribution (continuous or discrete) or a distribution object.
+- The configured variable is stored in `invars[name]` as an `InputVar`.
+- `figsize`, `color`, and `tail` (the probability mass trimmed from each end of the plotted range) customize the plot.
 
-**Raises:**
-- `DistributionConfigurationError`: If dist is None for multiple sliders
+Raises `DistributionConfigurationError` if `dist` is omitted for multiple sliders, and `UnknownDistributionError` if `dist` names an unknown distribution.
 
-### `generate_ranges(distribution: str, ranged_distkwargs: dict) -> dict`
+### `generate_ranges(distribution: str, ranged_distkwargs: dict[str, RangeSpec]) -> dict[str, RangeSpec]`
 
-Generate parameter ranges for a probability distribution.
+Validate parameter ranges against the allowed bounds of a distribution and merge them with curated defaults. Supported distributions: `beta`, `norm`, `triang`, `uniform`.
 
-Takes a distribution name and dictionary of parameter ranges, validates the ranges against allowed bounds for that distribution, and returns a merged dictionary with complete range specifications.
+Raises `MissingParameterError` if a required parameter range is not provided, `ParameterBoundError` if a range exceeds the allowed bounds, and `UnknownDistributionError` for distributions without curated bounds.
 
-**Parameters:**
-- `distribution`: Name of the probability distribution (e.g. "normal", "beta")
-- `ranged_distkwargs`: Dictionary mapping parameter names to their range specifications. Each range spec should have "lower" and "upper" bounds.
+### `params_sliders(ranged_distkwargs: dict[str, RangeSpec]) -> mo.ui.dictionary`
 
-**Returns:**
-- `dict`: Complete parameter range specifications with distribution defaults merged with provided ranges
+Create a dictionary of marimo sliders, one per parameter. Each range spec provides `lower` and `upper` bounds and may provide `step` (default `0.1`) and `value` (default: midpoint of the bounds).
 
-**Raises:**
-- `MissingParameterError`: If a required parameter range is not provided
-- `ParameterBoundError`: If a provided range exceeds the allowed bounds for a param
-
-### `params_sliders(ranged_distkwargs: dict) -> mo.ui.dictionary`
-
-Create a dictionary of sliders for parameter ranges.
-
-Takes a dictionary of param ranges and creates interactive sliders for each param. The sliders will be bounded by the lower/upper values specified in the ranges dict. The step size and initial value can optionally be specified per param.
-
-**Parameters:**
-- `ranged_distkwargs`: Dictionary mapping parameter names to their range specifications. Each range spec should have "lower" and "upper" bounds, and optionally "step" and "value" keys.
-
-**Returns:**
-- `mo.ui.dictionary`: A dictionary of marimo slider UI elements, one per parameter. Each slider will be configured according to the parameter's range spec.
-
-**Example:**
 ```python
-ranges = {
+sliders = params_sliders({
     "mean": {"lower": 0, "upper": 100, "step": 1, "value": 50},
-    "std": {"lower": 0, "upper": 10}
-}
-sliders = params_sliders(ranges)
+    "std": {"lower": 0, "upper": 10},
+})
 ```
 
-## Supported Distributions
+### `InputVar`
 
-Any scipy distribution can be used.
+Dataclass describing a configured input variable.
 
-Included helpers following scipy distributions:
-- `uniform`: Uniform distribution
-- `triang`: Triangular distribution
-- `beta`: Beta distribution
-- `norm`: Normal distribution
+- `dist`: the scipy distribution callable, or `None` for a constant
+- `params`: the slider(s) controlling the variable
+- `is_constant`: whether the variable is a constant
+- `frozen()`: the frozen scipy distribution for the current slider values
+- `sample(size, rng=None)`: draw samples (constants return a filled array)
 
-## Dependencies
+### `sample_invars(invars: dict[str, InputVar], size: int, rng=None) -> dict[str, np.ndarray]`
 
-- marimo
-- matplotlib
-- scipy
+Sample every configured input variable at once — handy for Monte Carlo simulation.
+
+### `resolve_distribution(dist: str | Callable) -> Callable`
+
+Resolve a distribution name (any `scipy.stats` distribution) or callable to the scipy distribution object.
+
+### `abbrev_format(x: float, pos: int | None = None) -> str`
+
+Format numbers with k/M/B suffixes. Uses Python's round-half-to-even, and negative numbers keep their sign.
+
+```python
+abbrev_format(1500)       # "2k"
+abbrev_format(2400000)    # "2M"
+abbrev_format(3e9)        # "3B"
+abbrev_format(-1500)      # "-2k"
+abbrev_format(42.7)       # "42.7"
+```
+
+## Development
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check && uv run ruff format --check
+uv run ty check src
+```
+
+## License
+
+Apache-2.0
