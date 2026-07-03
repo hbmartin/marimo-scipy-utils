@@ -3,7 +3,10 @@ import pytest
 from marimo_scipy_utils import (
     MissingParameterError,
     ParameterBoundError,
+    ParameterRangeError,
+    ParameterValidationError,
     UnknownDistributionError,
+    UnknownParameterError,
     generate_ranges,
 )
 from marimo_scipy_utils.marimo_components import _deep_merge, _distributions
@@ -58,6 +61,42 @@ def test_provided_param_missing_required_upper_raises():
         generate_ranges(
             "norm",
             {"loc": {"lower": 0, "upper": 100}, "scale": {"lower": 1}},
+        )
+
+
+def test_explicit_none_bound_raises():
+    with pytest.raises(MissingParameterError):
+        generate_ranges(
+            "norm",
+            {"loc": {"lower": 0, "upper": 100}, "scale": {"lower": None, "upper": 10}},
+        )
+
+
+def test_unknown_parameter_raises():
+    with pytest.raises(UnknownParameterError):
+        generate_ranges(
+            "norm",
+            {
+                "loc": {"lower": 0, "upper": 100},
+                "scale": {"upper": 10},
+                "mean": {"lower": 0, "upper": 100},
+            },
+        )
+
+
+def test_inverted_bounds_raise():
+    with pytest.raises(ParameterRangeError):
+        generate_ranges(
+            "norm",
+            {"loc": {"lower": 10, "upper": 5}, "scale": {"upper": 10}},
+        )
+
+
+def test_equal_bounds_raise():
+    with pytest.raises(ParameterValidationError):
+        generate_ranges(
+            "norm",
+            {"loc": {"lower": 10, "upper": 10}, "scale": {"upper": 10}},
         )
 
 

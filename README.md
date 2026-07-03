@@ -70,7 +70,7 @@ Raises `DistributionConfigurationError` if `dist` is omitted for multiple slider
 
 Validate parameter ranges against the allowed bounds of a distribution and merge them with curated defaults. Supported distributions: `beta`, `norm`, `triang`, `uniform`.
 
-Raises `MissingParameterError` if a required parameter range is not provided, `ParameterBoundError` if a range exceeds the allowed bounds, and `UnknownDistributionError` for distributions without curated bounds.
+Raises `MissingParameterError` if a required parameter range is not provided, `ParameterBoundError` if a range exceeds the allowed bounds, `ParameterRangeError` for invalid lower/upper ranges, `UnknownParameterError` for unsupported parameters, and `UnknownDistributionError` for distributions without curated bounds.
 
 ### `params_sliders(ranged_distkwargs: dict[str, RangeSpec]) -> mo.ui.dictionary`
 

@@ -4,17 +4,19 @@ import numpy as np
 import pytest
 import scipy.stats
 
+import marimo_scipy_utils.marimo_components as components
 from marimo_scipy_utils import (
     DistributionConfigurationError,
     InputVar,
     MissingParameterError,
+    ParameterRangeError,
     UnknownDistributionError,
     display_sliders,
     params_sliders,
     resolve_distribution,
     sample_invars,
 )
-from marimo_scipy_utils.marimo_components import _dist_plot
+from marimo_scipy_utils.marimo_components import _dist_plot, _parameter_descriptions
 
 
 def test_params_sliders_configuration():
@@ -36,6 +38,11 @@ def test_params_sliders_configuration():
 def test_params_sliders_missing_bound_raises():
     with pytest.raises(MissingParameterError):
         params_sliders({"mean": {"lower": 0}})
+
+
+def test_params_sliders_inverted_bound_raises():
+    with pytest.raises(ParameterRangeError):
+        params_sliders({"mean": {"lower": 10, "upper": 5}})
 
 
 def test_resolve_distribution():
@@ -96,6 +103,44 @@ def test_dist_plot_closes_figure():
     assert plt.get_fignums() == open_before
 
 
+def test_dist_plot_caps_discrete_points(monkeypatch):
+    steps = []
+    original_arange = np.arange
+
+    def arange_spy(start, stop, step=1):
+        steps.append(step)
+        return original_arange(start, stop, step)
+
+    class WideDiscreteDistribution:
+        def ppf(self, q):
+            return 0 if q < 0.5 else 10_000
+
+        def pmf(self, x):
+            return np.ones_like(x, dtype=float)
+
+    def wide_discrete_dist():
+        return WideDiscreteDistribution()
+
+    monkeypatch.setattr(components.np, "arange", arange_spy)
+
+    _dist_plot({}, wide_discrete_dist)
+
+    assert any(step > 1 for step in steps)
+
+
+def test_parameter_descriptions_for_callable_distribution():
+    sliders = params_sliders(
+        {
+            "loc": {"lower": 0, "upper": 10},
+            "scale": {"lower": 0.1, "upper": 5},
+        },
+    )
+
+    descriptions = _parameter_descriptions(sliders, scipy.stats.norm, None)
+
+    assert descriptions == {"loc": "Mean", "scale": "Standard deviation"}
+
+
 def test_input_var_sample_constant():
     var = InputVar(dist=None, params=mo.ui.slider(start=0, stop=10, value=4))
     samples = var.sample(100)
@@ -140,3 +185,24 @@ def test_sample_invars():
     assert samples["const"].shape == (50,)
     assert (samples["const"] == 2).all()
     assert ((samples["dist"] >= 0) & (samples["dist"] <= 1)).all()
+
+
+def test_sample_invars_uses_one_generator_for_integer_seed():
+    invars = {
+        "first": InputVar(
+            dist=scipy.stats.uniform,
+            params=params_sliders(
+                {"loc": {"lower": 0, "upper": 1}, "scale": {"lower": 1, "upper": 2}},
+            ),
+        ),
+        "second": InputVar(
+            dist=scipy.stats.uniform,
+            params=params_sliders(
+                {"loc": {"lower": 0, "upper": 1}, "scale": {"lower": 1, "upper": 2}},
+            ),
+        ),
+    }
+
+    samples = sample_invars(invars, 20, rng=0)
+
+    assert not np.array_equal(samples["first"], samples["second"])

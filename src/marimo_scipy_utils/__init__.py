@@ -17,8 +17,10 @@ from .exceptions import (
     DistributionConfigurationError,
     MissingParameterError,
     ParameterBoundError,
+    ParameterRangeError,
     ParameterValidationError,
     UnknownDistributionError,
+    UnknownParameterError,
 )
 from .marimo_components import (
     SCIPY_DISTRIBUTIONS,
@@ -38,9 +40,11 @@ __all__ = [
     "InputVar",
     "MissingParameterError",
     "ParameterBoundError",
+    "ParameterRangeError",
     "ParameterValidationError",
     "RangeSpec",
     "UnknownDistributionError",
+    "UnknownParameterError",
     "abbrev_format",
     "display_sliders",
     "generate_ranges",

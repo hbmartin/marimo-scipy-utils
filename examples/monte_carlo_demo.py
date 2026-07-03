@@ -92,7 +92,7 @@ def _(invars, margin_view, np, revenue_view, sample_invars):
 
 
 @app.cell
-def _(mo, plt, profit):
+def _(mo, np, plt, profit):
     from marimo_scipy_utils import abbrev_format
 
     _fig, _ax = plt.subplots(figsize=(6, 3))
@@ -106,7 +106,7 @@ def _(mo, plt, profit):
         [
             mo.md(
                 f"### Simulated profit (10,000 draws) — "
-                f"median {abbrev_format(float(sorted(profit)[len(profit) // 2]))}"
+                f"median {abbrev_format(float(np.median(profit)))}"
             ),
             _chart,
         ]

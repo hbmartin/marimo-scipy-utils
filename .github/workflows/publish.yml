@@ -4,6 +4,8 @@ on:
   release:
     types: [created]
 
+permissions: {}
+
 jobs:
   pypi-publish:
     name: Upload release to PyPI
@@ -11,12 +13,13 @@ jobs:
     # Specifying a GitHub environment is optional, but strongly encouraged
     environment: release
     permissions:
+      contents: read
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
     - uses: actions/checkout@v4
-    - uses: astral-sh/setup-uv@v6
+    - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
     - name: Build distributions
       run: uv build
     - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
