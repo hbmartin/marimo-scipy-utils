@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+
+
 class ParameterValidationError(Exception):
     """Base class for parameter validation errors."""
 
@@ -5,7 +8,7 @@ class ParameterValidationError(Exception):
 class MissingParameterError(ParameterValidationError):
     """Raised when a required parameter is missing."""
 
-    def __init__(self, parameter_name: str, ranges: dict | None = None):
+    def __init__(self, parameter_name: str, ranges: Mapping | None = None):
         if ranges:
             message = f"Missing required parameter: {parameter_name}, must set any `None`s in {ranges}"
         else:
@@ -33,5 +36,16 @@ class DistributionConfigurationError(ParameterValidationError):
 
     def __init__(self):
         super().__init__(
-            "dist is required for multiple sliders, use _CONST for constants",
+            "dist is required when passing a dictionary of parameter sliders; only a single slider (a constant) may omit it",
         )
+
+
+class UnknownDistributionError(ParameterValidationError):
+    """Raised when a distribution name cannot be resolved."""
+
+    def __init__(self, distribution: str, supported: list[str] | None = None):
+        if supported:
+            message = f"Unknown distribution: {distribution!r}, supported distributions are: {supported}"
+        else:
+            message = f"Unknown distribution: {distribution!r}, expected the name of a scipy.stats distribution"
+        super().__init__(message)
