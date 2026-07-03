@@ -1,0 +1,16 @@
+rules:
+  - id: github-actions-pypi-publish-mutable-ref
+    languages:
+      - yaml
+    severity: ERROR
+    message: Pin pypa/gh-action-pypi-publish to a full commit SHA in release workflows.
+    paths:
+      include:
+        - /.github/workflows/*.yml
+        - /.github/workflows/*.yaml
+    patterns:
+      - pattern: |
+          uses: pypa/gh-action-pypi-publish@$REF
+      - metavariable-regex:
+          metavariable: $REF
+          regex: "^(?![0-9a-f]{40}$).+"

@@ -31,6 +31,33 @@ class ParameterBoundError(ParameterValidationError):
         super().__init__(message)
 
 
+class ParameterRangeError(ParameterValidationError):
+    """Raised when a parameter's lower/upper range is invalid."""
+
+    def __init__(self, parameter_name: str, lower: float, upper: float):
+        message = (
+            f"{parameter_name}: lower bound {lower} must be less than upper bound "
+            f"{upper}"
+        )
+        super().__init__(message)
+
+
+class UnknownParameterError(ParameterValidationError):
+    """Raised when a range is provided for an unsupported parameter."""
+
+    def __init__(
+        self,
+        parameter_name: str,
+        distribution: str,
+        supported: list[str],
+    ):
+        message = (
+            f"Unknown parameter for {distribution!r}: {parameter_name!r}, "
+            f"supported parameters are: {supported}"
+        )
+        super().__init__(message)
+
+
 class DistributionConfigurationError(ParameterValidationError):
     """Raised when distribution configuration is invalid."""
 

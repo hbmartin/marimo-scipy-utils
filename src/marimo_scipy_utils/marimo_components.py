@@ -16,7 +16,7 @@ import copy
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 import marimo as mo
 import matplotlib.pyplot as plt
@@ -28,7 +28,9 @@ from .exceptions import (
     DistributionConfigurationError,
     MissingParameterError,
     ParameterBoundError,
+    ParameterRangeError,
     UnknownDistributionError,
+    UnknownParameterError,
 )
 
 _DEFAULT_STEP = 0.1
@@ -36,6 +38,7 @@ _DEFAULT_FIGSIZE = (2.0, 2.0)
 _DEFAULT_COLOR = "C0"
 _DEFAULT_TAIL = 0.0005
 _PLOT_POINTS = 100
+_MAX_DISCRETE_PLOT_POINTS = 500
 
 
 class RangeSpec(TypedDict, total=False):
@@ -179,7 +182,8 @@ def sample_invars(
         dict[str, np.ndarray]: Mapping of variable name to sample array.
 
     """
-    return {name: var.sample(size, rng) for name, var in invars.items()}
+    generator = np.random.default_rng(rng) if isinstance(rng, int) else rng
+    return {name: var.sample(size, generator) for name, var in invars.items()}
 
 
 def _deep_merge(dict1: dict, dict2: dict) -> dict:
@@ -191,6 +195,39 @@ def _deep_merge(dict1: dict, dict2: dict) -> dict:
         else:
             result[key] = value
     return result
+
+
+def _resolve_range_bound(
+    parameter_name: str,
+    ranges: RangeSpec,
+    given: RangeSpec,
+    bound_name: Literal["lower", "upper"],
+) -> float:
+    allowed = ranges.get(bound_name)
+    if bound_name in given:
+        value = given[bound_name]
+        if value is None:
+            raise MissingParameterError(parameter_name, given)
+        return value
+    if allowed is None:
+        raise MissingParameterError(parameter_name, ranges)
+    return allowed
+
+
+def _validate_allowed_bound(
+    parameter_name: str,
+    bound_name: Literal["lower", "upper"],
+    value: float,
+    allowed: float | None,
+    *,
+    is_provided: bool,
+) -> None:
+    if allowed is None or not is_provided:
+        return
+    if bound_name == "lower" and value < allowed:
+        raise ParameterBoundError(parameter_name, value, allowed, "lower")
+    if bound_name == "upper" and value > allowed:
+        raise ParameterBoundError(parameter_name, value, allowed, "upper")
 
 
 def generate_ranges(
@@ -222,6 +259,13 @@ def generate_ranges(
     if distribution not in _distributions:
         raise UnknownDistributionError(distribution, sorted(_distributions))
     defaults = copy.deepcopy(_distributions[distribution])
+    unknown_params = sorted(set(ranged_distkwargs) - set(defaults))
+    if unknown_params:
+        raise UnknownParameterError(
+            unknown_params[0],
+            distribution,
+            sorted(defaults),
+        )
 
     for p_name, ranges in defaults.items():
         allowed_lower = ranges.get("lower")
@@ -232,26 +276,24 @@ def generate_ranges(
             continue
 
         given = ranged_distkwargs[p_name]
-        given_lower = given.get("lower")
-        given_upper = given.get("upper")
-
-        if given_lower is None and allowed_lower is None:
-            raise MissingParameterError(p_name)
-        if (
-            given_lower is not None
-            and allowed_lower is not None
-            and given_lower < allowed_lower
-        ):
-            raise ParameterBoundError(p_name, given_lower, allowed_lower, "lower")
-
-        if given_upper is None and allowed_upper is None:
-            raise MissingParameterError(p_name)
-        if (
-            given_upper is not None
-            and allowed_upper is not None
-            and given_upper > allowed_upper
-        ):
-            raise ParameterBoundError(p_name, given_upper, allowed_upper, "upper")
+        final_lower = _resolve_range_bound(p_name, ranges, given, "lower")
+        final_upper = _resolve_range_bound(p_name, ranges, given, "upper")
+        _validate_allowed_bound(
+            p_name,
+            "lower",
+            final_lower,
+            allowed_lower,
+            is_provided="lower" in given,
+        )
+        _validate_allowed_bound(
+            p_name,
+            "upper",
+            final_upper,
+            allowed_upper,
+            is_provided="upper" in given,
+        )
+        if final_lower >= final_upper:
+            raise ParameterRangeError(p_name, final_lower, final_upper)
 
     return _deep_merge(defaults, ranged_distkwargs)
 
@@ -292,6 +334,8 @@ def params_sliders(
         upper = ranges.get("upper")
         if lower is None or upper is None:
             raise MissingParameterError(p_name, ranges)
+        if lower >= upper:
+            raise ParameterRangeError(p_name, lower, upper)
         sliders[p_name] = mo.ui.slider(
             start=lower,
             stop=upper,
@@ -362,7 +406,11 @@ def _dist_plot(
             ax.plot(x, y, color=color, linewidth=2)
             ax.fill_between(x, y, color=color, alpha=0.3)
         else:
-            x = np.arange(math.floor(x_min), math.ceil(x_max) + 1)
+            start = math.floor(x_min)
+            stop = math.ceil(x_max)
+            point_count = stop - start + 1
+            step = max(1, math.ceil(point_count / _MAX_DISCRETE_PLOT_POINTS))
+            x = np.arange(start, stop + 1, step)
             y = frozen.pmf(x)
             ax.vlines(x, 0, y, color=color, linewidth=2)
         ax.set_ylabel("Probability Density" if is_continuous else "Probability Mass")
@@ -381,8 +429,9 @@ def _parameter_descriptions(
 ) -> dict[str, str]:
     if descriptions:
         return descriptions
-    if isinstance(dist, str) and dist in _distributions:
-        spec = _distributions[dist]
+    dist_name = dist if isinstance(dist, str) else getattr(dist, "name", None)
+    if isinstance(dist_name, str) and dist_name in _distributions:
+        spec = _distributions[dist_name]
         return {k: spec[k].get("description", k) for k in sliders if k in spec}
     return {}
 
